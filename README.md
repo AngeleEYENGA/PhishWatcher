@@ -18,4 +18,6 @@ Ce projet combine des techniques de **cybersécurité** et d’**apprentissage a
 - **Streamlit** – interface utilisateur
 - **VirusTotal API** *(optionnel)* – analyse des URLs via une base externe
 
-## 📂 Structure du projet
+## 🌍 Application en ligne
+https://phishwatcher-jf9ybxqxwtquada79zrkql.streamlit.app/
+
