@@ -1,0 +1,105 @@
+# main.py
+
+import re
+import requests
+
+# === CONFIG ===
+VIRUSTOTAL_API_KEY = 'b77fd74596e93a2a6bfc8e5ecc72bcc1f1856fe916068f5af22da95f51fec106'
+VT_URL = 'https://www.virustotal.com/api/v3/urls'
+
+def extract_domain(url):
+    url = re.sub(r'^https?://', '', url)
+    return url.split('/')[0]
+
+def check_suspicious_patterns(url):
+    score = 0
+    reasons = []
+
+    if '@' in url:
+        score += 1
+        reasons.append("Présence de '@' (tentative de redirection)")
+
+    if re.search(r"(login|secure|account|update|verify)", url, re.I):
+        score += 1
+        reasons.append("Mots-clés sensibles dans l’URL")
+
+    if re.search(r"(micros0ft|paypa1|g00gle)", url, re.I):
+        score += 2
+        reasons.append("Faux domaine connu (typosquatting)")
+
+    if url.count('.') > 3:
+        score += 1
+        reasons.append("Nom de domaine très long")
+
+    return score, reasons
+
+def scan_virustotal(url):
+    headers = {
+        "x-apikey": VIRUSTOTAL_API_KEY
+    }
+    data = {
+        "url": url
+    }
+
+    response = requests.post(VT_URL, headers=headers, data=data)
+    if response.status_code == 200:
+        analysis_url = response.json()['data']['id']
+        get_url = f"{VT_URL}/{analysis_url}"
+        result = requests.get(get_url, headers=headers)
+        try:
+            stats = result.json()['data']['attributes']['last_analysis_stats']
+            positives = stats['malicious'] + stats['suspicious']
+            return positives
+        except:
+            return 0
+    else:
+        return 0
+
+def main():
+    url = input("👉 Entre une URL à analyser : ").strip()
+
+    print("\n--- Analyse locale ---")
+    local_score, reasons = check_suspicious_patterns(url)
+    for reason in reasons:
+        print(f"🔎 {reason}")
+
+    print("\n--- Analyse VirusTotal ---")
+    vt_score = scan_virustotal(url)
+    print(f"🧪 VirusTotal : {vt_score} détection(s) suspecte(s)")
+
+    total_score = local_score + vt_score
+
+    print("\n--- Résultat final ---")
+    if total_score < 3:
+        niveau = "🟢 Risque faible"
+    elif total_score < 5:
+        niveau = "🟠 Risque modéré"
+    else:
+        niveau = "🔴 Risque élevé"
+
+    print(f"Score total : {total_score} → {niveau}")
+
+if __name__ == "__main__":
+    
+
+def main():
+    mode = input("📌 Analyse une seule URL (1) ou un fichier d’URLs (2) ? ")
+
+    if mode == "1":
+        url = input("👉 Entre une URL à analyser : ").strip()
+        analyser_url(url)
+
+    elif mode == "2":
+        chemin = input("📄 Donne le chemin du fichier .txt : ").strip()
+        try:
+            with open(chemin, 'r') as f:
+                urls = [line.strip() for line in f if line.strip()]
+                for url in urls:
+                    print(f"\n🧪 Analyse de : {url}")
+                    analyser_url(url)
+                    print("—" * 40)
+        except FileNotFoundError:
+            print("❌ Fichier introuvable.")
+    else:
+        print("❌ Option invalide.")
+
